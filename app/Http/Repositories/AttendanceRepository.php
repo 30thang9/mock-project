@@ -7,6 +7,7 @@ interface AttendanceRepository
     function findAll();
     function findOne($id);
     function findByUser($user);
+    function findByUserAndMonth($user, $month);
     function findByUserPosition($position);
     function findByUserDepartment($department);
     function save($attendance);

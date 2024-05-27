@@ -13,5 +13,6 @@ class ScheduledNotification extends Model
         'title',
         'message',
         'scheduled_at',
+        'sent'
     ];
 }

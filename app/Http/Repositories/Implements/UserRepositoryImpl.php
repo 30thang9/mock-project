@@ -24,6 +24,15 @@ class UserRepositoryImpl implements UserRepository
         $currentPage = max(1, $currentPage);
         return User::paginate($perPage, ['*'], 'page', $currentPage);
     }
+    public function findOnlyRoleUser($currentPage = 1, $perPage = null)
+    {
+        $query = User::where('role_id','!=', 1);
+        if ($perPage === null) {
+            return $query->get();
+        }
+        $currentPage = max(1, $currentPage);
+        return $query->paginate($perPage, ['*'], 'page', $currentPage);
+    }
     public function findOne($id)
     {
         return User::find($id);
@@ -59,7 +68,6 @@ class UserRepositoryImpl implements UserRepository
     function findBySearchText($searchText)
     {
         $query = User::query();
-        $searchText = trim($searchText);
 
         if ($searchText) {
             $query->where(function ($q) use ($searchText) {
@@ -67,7 +75,7 @@ class UserRepositoryImpl implements UserRepository
                     ->orWhere('email', 'like', '%' . $searchText . '%');
             });
         }
-        $users = $query->get();
+        $users = $query->where('role_id','!=',1)->get();
         return $users;
     }
 

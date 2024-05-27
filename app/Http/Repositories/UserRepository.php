@@ -5,6 +5,7 @@ namespace App\Http\Repositories;
 interface UserRepository
 {
     function findAll();
+    public function findOnlyRoleUser();
     function findOne($id);
     function findByEmail($email);
     function findBySearchText($searchText);

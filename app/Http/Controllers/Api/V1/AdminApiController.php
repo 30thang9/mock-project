@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Repositories\UserRepository;
 use App\Http\Requests\Users\AdminHandleUserUpdateRequest;
 use App\Http\Requests\Users\UserCreateRequest;
+use App\Models\Position;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -37,7 +38,7 @@ class AdminApiController extends Controller
 
         try {
             DB::beginTransaction();
-            $user =  $this->userRepo->save($user);
+            $user = $this->userRepo->save($user);
             DB::commit();
             if(!$user){
                 return apiResponse(__('Registation error'), null, ResponseAlias::HTTP_UNPROCESSABLE_ENTITY);
@@ -94,7 +95,12 @@ class AdminApiController extends Controller
         $currentPage = $request->input('current_page', 1);
         $perPage = $request->input('per_page', null);
 
-        $users = $this->userRepo->findAll($currentPage, $perPage);
+        $users = $this->userRepo->findOnlyRoleUser($currentPage, $perPage);
+        foreach ($users as $user) {
+            $user->positions = $user->positions;
+            $user->role = $user->role;
+            $user->department = $user->department;
+        }
 
         return apiResponse('Query successfully!', $users);
     }
@@ -118,6 +124,79 @@ class AdminApiController extends Controller
         } catch (\Exception $e) {
             Log::error('Failed to fetch user: ' . $e->getMessage());
             return apiResponse(__('Failed to fetch user'), null, ResponseAlias::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    public function createUserPosition(Request $request, $userId)
+    {
+        $request->validate([
+            'position_id' => 'required|exists:positions,id',
+        ]);
+
+        try {
+            $user = $this->userRepo->findOne($userId);
+            if (!$user) {
+                return apiResponse(__('User not found'), null, ResponseAlias::HTTP_NOT_FOUND);
+            }
+            $positionId = $request->input('position_id');
+
+            if ($user->positions()->where('id', $positionId)->exists()) {
+                return apiResponse(__('User already has this position'), null, ResponseAlias::HTTP_BAD_REQUEST);
+            }
+
+            $user->positions()->attach($positionId);
+
+            $position = Position::findOrFail($positionId);
+
+            return apiResponse(__('Position assigned successfully'), ['position' => $position]);
+        } catch (\Exception $e) {
+            Log::error('Failed to assign position to user: ' . $e->getMessage());
+            return apiResponse(__('Failed to assign position to user'), null, ResponseAlias::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    public function updateUserPosition(Request $request, $userId, $positionId)
+    {
+        $request->validate([
+            'status' => 'required|boolean',
+        ]);
+
+        try {
+            $user = $this->userRepo->findOne($userId);
+            if (!$user) {
+                return apiResponse(__('User not found'), null, ResponseAlias::HTTP_NOT_FOUND);
+            }
+
+            if (!$user->positions()->where('id', $positionId)->exists()) {
+                return apiResponse(__('User does not have this position'), null, ResponseAlias::HTTP_BAD_REQUEST);
+            }
+
+            $position = $user->positions()->findOrFail($positionId);
+
+            $position->pivot->status = $request->input('status');
+            $position->pivot->save();
+
+            return apiResponse(__('Position status updated successfully'), ['position' => $position]);
+        } catch (\Exception $e) {
+            Log::error('Failed to update position status for user: ' . $e->getMessage());
+            return apiResponse(__('Failed to update position status for user'), null, ResponseAlias::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    public function deleteUserPosition($userId, $positionId)
+    {
+        try {
+            $user = $this->userRepo->findOne($userId);
+            if (!$user) {
+                return apiResponse(__('User not found'), null, ResponseAlias::HTTP_NOT_FOUND);
+            }
+
+            $user->positions()->detach($positionId);
+
+            return apiResponse(__('Position removed successfully'));
+        } catch (\Exception $e) {
+            Log::error('Failed to remove position from user: ' . $e->getMessage());
+            return apiResponse(__('Failed to remove position from user'), null, ResponseAlias::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 

@@ -39,7 +39,7 @@ class AttendanceApiController extends Controller
         }
     }
 
-    public function getAttendance($userId) {
+    public function getCurrentAttendanceByUser($userId) {
         try {
             $authUser = JWTAuth::user();
 
@@ -52,6 +52,8 @@ class AttendanceApiController extends Controller
             $attendanceRecords = Redis::hgetall($redisKey);
 
             $attendances = [];
+            $checkInTimes = [];
+            $checkOutTimes = [];
 
             foreach ($attendanceRecords as $time => $record) {
                 $data = json_decode($record, true);
@@ -60,6 +62,48 @@ class AttendanceApiController extends Controller
                     'check_in_time' => $time,
                     'user_id' => $data['user_id']
                 ];
+
+                $checkInTimes[] = strtotime($time);
+                $checkOutTimes[] = strtotime($time);
+            }
+
+            if (!empty($checkInTimes) && !empty($checkOutTimes)) {
+                $firstCheckIn = min($checkInTimes);
+                $lastCheckOut = max($checkOutTimes);
+
+                $firstCheckInTime = date('Y-m-d H:i:s', $firstCheckIn);
+                $lastCheckOutTime = date('Y-m-d H:i:s', $lastCheckOut);
+            } else {
+                $firstCheckInTime = null;
+                $lastCheckOutTime = null;
+            }
+
+            $data = [
+                'attendances' => $attendances,
+                'check_in_time' => $firstCheckInTime,
+                'check_out_time' => $lastCheckOutTime
+            ];
+
+            return apiResponse(__('Query successfully!'), $data);
+        } catch (\Exception $e) {
+            return apiResponse(__("Something went wrong on our end"), null, Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    public function getAttendanceByUser(Request $request, $userId) {
+        try {
+            $authUser = JWTAuth::user();
+
+            if (strval($userId) !== strval($authUser->id)) {
+                return apiResponse(__('Unauthenticated.'), null, Response::HTTP_UNAUTHORIZED);
+            }
+
+            $month = $request->input('month', null);
+
+            if($month){
+                $attendances = $this->attendanceRepo->findByUserAndMonth($authUser, $month);
+            }else{
+                $attendances = $this->attendanceRepo->findByUser($authUser);
             }
 
             return apiResponse(__('Query successfully!'), ["attendances" => $attendances]);

@@ -7,6 +7,7 @@ use App\Models\Attendance;
 use App\Models\Department;
 use App\Models\Position;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -34,6 +35,21 @@ class AttendanceRepositoryImpl implements AttendanceRepository
         }
 
         return Attendance::where('user_id', $user->id)->get();
+    }
+
+    function findByUserAndMonth($user, $month)
+    {
+        if (!($user instanceof User)) {
+            return collect();
+        }
+
+        $startDate = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
+
+        $endDate = $startDate->copy()->endOfMonth();
+
+        return Attendance::where('user_id', $user->id)
+            ->whereBetween('check_in_time', [$startDate, $endDate])
+            ->get();
     }
 
     function findByUserPosition($position)

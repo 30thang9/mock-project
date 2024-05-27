@@ -60,7 +60,15 @@ class AuthApiController extends Controller
         }
     }
     public function logout(Request $request){
+        try {
+            JWTAuth::parseToken()->invalidate();
 
+            return apiResponse(__('Logout successfully!'));
+
+        } catch (\Exception $e) {
+            Log::error('Logout failed: '. $e->getMessage());
+            return apiResponse(__("Something went wrong on our end"), null, ResponseAlias::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     public function refreshToken()

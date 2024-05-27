@@ -64,10 +64,16 @@ class AttendanceRepositoryImpl implements AttendanceRepository
             return null;
         }
         try {
+            DB::beginTransaction();
+
             $attendance->save();
+
+            DB::commit();
+
             return $attendance;
         }
         catch (\Exception $e) {
+            DB::rollBack();
             return null;
         }
     }
@@ -75,9 +81,15 @@ class AttendanceRepositoryImpl implements AttendanceRepository
     function deleteById($id):bool
     {
         try {
+            DB::beginTransaction();
+
             Attendance::destroy($id);
+
+            DB::commit();
+
             return true;
         } catch (\Exception $exception) {
+            DB::rollBack();
             return false;
         }
     }

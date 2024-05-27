@@ -5,14 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Attendance extends Model
+class ScheduledNotification extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'user_id',
-        'check_in_time',
-        'check_out_time',
-        'date'
+        'title',
+        'message',
+        'scheduled_at',
     ];
 }
